@@ -1,0 +1,37 @@
+{
+    "name": "babel-plugin-module-paths-resolver",
+    "version": "0.0.1",
+    "description": "A plugin to resolve tsconfig paths for babel!",
+    "main": "dist/index.js",
+    "types": "src/index.ts",
+    "files": [
+        "src",
+        "dist"
+    ],
+    "scripts": {
+        "start": "esc ./src",
+        "build": "yarn clean && yarn compile",
+        "watch": "yarn compile -watch",
+        "compile": "tsc -p ./",
+        "module": "tsc -p ./ --outDir ./esm -m ESNext",
+        "prepublishOnly": "yarn build",
+        "test": "jest",
+        "clean": "rm -rf ./dist"
+    },
+    "repository": "",
+    "author": "edonet@163.com",
+    "license": "MIT",
+    "dependencies": {
+        "@ainc/fs": "^0.1.8",
+        "@babel/core": "^7.14.3",
+        "@babel/helper-plugin-utils": "^7.13.0",
+        "strip-bom": "^5.0.0",
+        "strip-json-comments": "^3.1.1"
+    },
+    "devDependencies": {
+        "@types/babel__core": "^7.1.14",
+        "@types/babel__helper-plugin-utils": "^7.10.0",
+        "@types/jest": "^26.0.23",
+        "@types/node": "^15.6.1"
+    }
+}
