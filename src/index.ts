@@ -47,15 +47,33 @@ const config = (
 
 /**
  *****************************************
-* 校验调用加载函数
-*****************************************
-*/
-function validateCallExpr(args: ({ type: string })[], parent: types.Node): boolean {
-    return (
-        args.length === 1 &&
-        args[0].type === 'StringLiteral' &&
-        parent.type !== 'ExpressionStatement'
-    );
+ * 插件状态
+ *****************************************
+ */
+interface State extends PluginPass {
+    calls?: string[];
+    resolvePath?(source: string): string;
+}
+
+
+/**
+ *****************************************
+ * 转换的资源路径
+ *****************************************
+ */
+function transformSourceNode(expr: NodePath<types.StringLiteral>, state: State): void {
+    if (!expr || !state.resolvePath || !types.isStringLiteral(expr)) {
+        return;
+    }
+
+    // 获取路径
+    const sourcePath = expr.node.value;
+    const resolvedPath = state.resolvePath(sourcePath);
+
+    // 替换路径
+    if (sourcePath !== resolvedPath) {
+        expr.replaceWith(types.stringLiteral(resolvedPath));
+    }
 }
 
 
@@ -64,30 +82,39 @@ function validateCallExpr(args: ({ type: string })[], parent: types.Node): boole
  * 转换载入声明
  *****************************************
  */
- function transformImport(expr: NodePath<types.ImportDeclaration | types.ExportDeclaration>, state: PluginPass): void {
-    const source = expr.get('source') as NodePath<types.StringLiteral>;
+function transformImport(expr: NodePath<types.ImportDeclaration | types.ExportDeclaration>, state: State): void {
+    transformSourceNode(expr.get('source') as NodePath<types.StringLiteral>, state);
+}
 
-    // 不存在资源
-    if (!types.isStringLiteral(source)) {
-        return;
+
+/**
+ *****************************************
+ * 定义函数列表
+ *****************************************
+ */
+const transformCalls = ['require', 'require.resolve'];
+
+
+/**
+ *****************************************
+ * 匹配调用函数
+ *****************************************
+ */
+function matchSourceCall(name: string, expr: NodePath<types.Identifier>): boolean {
+    const { node } = expr;
+
+    // 匹配成员节点
+    if (types.isMemberExpression(node)) {
+        return expr.matchesPattern(name);
     }
 
-    // 获取解析函数
-    const resolvePath = state.resolvePath as (path: string) => string;
-
-    // 不存在解析函数
-    if (!resolvePath) {
-        return;
+    // 非标识府或匹配成员
+    if (!types.isIdentifier(node) || name.includes('.')) {
+        return false;
     }
 
-    // 获取路径
-    const sourcePath = source.node.value;
-    const resolvedPath = resolvePath(sourcePath);
-
-    // 替换路径
-    if (sourcePath !== resolvedPath) {
-        source.replaceWith(types.stringLiteral(resolvedPath));
-    }
+    // 匹配函数名
+    return node.name === name;
 }
 
 
@@ -96,8 +123,26 @@ function validateCallExpr(args: ({ type: string })[], parent: types.Node): boole
  * 转换调用声明
  *****************************************
  */
-function transformCall(expr: NodePath<types.CallExpression>): void {
-  console.log(expr);
+function transformCall(expr: NodePath<types.CallExpression>, state: State): void {
+
+    // 处理`import`调用
+    if (types.isImport(expr.node.callee)) {
+        return transformSourceNode(expr.get('arguments.0') as NodePath<types.StringLiteral>, state);
+    }
+
+    // 不存在转换函数
+    if (!state.calls) {
+        return;
+    }
+
+    // 获取调用节点
+    const callee = expr.get('callee') as NodePath<types.Identifier>;
+    const isSourceCall = state.calls.some(value => matchSourceCall(value, callee));
+
+    // 处理函数调用
+    if (isSourceCall) {
+        transformSourceNode(expr.get('arguments.0') as NodePath<types.StringLiteral>, state);
+    }
 }
 
 
@@ -108,6 +153,7 @@ function transformCall(expr: NodePath<types.CallExpression>): void {
  */
 interface Options {
     alias?: { [key: string]: string };
+    calls?: string[];
     exclude?: string[];
 }
 
@@ -119,11 +165,9 @@ interface Options {
  */
 export default declare((api, opts: Options = {}) => {
     const include = includePaths(opts.exclude || ['node_modules']);
-    const resolvePath = resolveAlias({
-        alias: opts.alias,
-        baseUrl: config.compilerOptions?.baseUrl,
-        paths: config.compilerOptions?.paths,
-    });
+    const calls = opts.calls ? [...transformCalls, ...opts.calls] : transformCalls;
+    const options = config.compilerOptions || {};
+    const resolvePath = resolveAlias({ alias: opts.alias, baseUrl: options.baseUrl, paths: options.paths });
 
     // 校验版本
     api.assertVersion(7);
@@ -136,6 +180,7 @@ export default declare((api, opts: Options = {}) => {
 
             // 过滤文件
             if (!filename || !include(filename)) {
+                this.calls = calls;
                 this.resolvePath = resolvePath;
             }
         },

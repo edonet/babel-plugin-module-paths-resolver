@@ -13,9 +13,7 @@
  *****************************************
  */
 import { stat, readFile } from '@ainc/fs';
-import stripBom from 'strip-bom';
-import * as stripComments from 'strip-json-comments';
-
+import stripComments from 'strip-json-comments';
 
 
 /**
@@ -33,7 +31,7 @@ export function load<T>(file: string): T | null {
 
     // 读取文件
     try {
-        const content = stripComments(stripBom(readFile(stats.path)));
+        const content = stripComments(readFile(stats.path));
 
         // 空白文件
         if (!content.trim()) {
