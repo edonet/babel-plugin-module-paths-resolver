@@ -33,14 +33,16 @@ Specify the plugin in your `.babelrc` with the custom alias and calls witch will
 ```
 
 Also the plugin will autoload the config in you `tsconfig.json` or `jsconfig.json`.
+* The `*` key will be ignored!
+* The `@components/*` will replaced by `./components/*`, `./src/components/*` will be ignored!
 ``` json
 {
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "*": ["./utils/*"], // the '*' key will be ignored.
+      "*": ["./utils/*"],
       "@/*": ["./src/*"],
-      "@components": ["./components/*", "./src/components/*"] // the `./src/components/*` will be ignored.
+      "@components/*": ["./components/*", "./src/components/*"]
     }
   }
 }
