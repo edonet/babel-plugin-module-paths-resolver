@@ -18,6 +18,23 @@ import stripComments from 'strip-json-comments';
 
 /**
  *****************************************
+ * 移除BOM头
+ *****************************************
+ */
+function stripBOM(content: string): string {
+
+    // 检测第一个字符是否为BOM
+    if (content.charCodeAt(0) === 0xFEFF) {
+        return content.slice(1);
+    }
+
+    // 返回源内容
+    return content;
+}
+
+
+/**
+ *****************************************
  * 加载配置
  *****************************************
  */
@@ -31,7 +48,7 @@ export function load<T>(file: string): T | null {
 
     // 读取文件
     try {
-        const content = stripComments(readFile(stats.path));
+        const content = stripComments(stripBOM(readFile(stats.path)));
 
         // 空白文件
         if (!content.trim()) {
