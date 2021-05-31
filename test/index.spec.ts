@@ -45,17 +45,17 @@ jest.requireMock("@/mock");
  */
 const result = `
 import React from "react/dist/index.js";
-import { named } from "${cwd('./src/dist/react/div.ts')}";
+import { named } from "./../src/dist/react/div.ts";
 import Vue from "vue";
-import Store from "${cwd('./src/dist/vue/dist/store')}";
+import Store from "./../src/dist/vue/dist/store";
 import app from "@";
-import * as jsonc from "${cwd('./src/jsonc')}";
-import * as utils from "${cwd('./src/app/utils')}";
-import("${cwd('./src/dist/react/index.js')}");
-require("${cwd('./src/jsonc')}");
-require.resolve("${cwd('./src/jsonc')}");
-jest.mock("${cwd('./src/mock')}");
-jest.requireMock("${cwd('./src/mock')}");
+import * as jsonc from "./../src/jsonc";
+import * as utils from "./../src/app/utils";
+import("./../src/dist/react/index.js");
+require("./../src/jsonc");
+require.resolve("./../src/jsonc");
+jest.mock("./../src/mock");
+jest.requireMock("./../src/mock");
 `;
 
 
@@ -68,6 +68,7 @@ describe('module-paths-resolver', () => {
     test('解析别名', () => {
         const { code } = transform(source, {
             babelrc: false,
+            filename: __filename,
             plugins: [
                 [modulePathsResolver, {
                     alias: {

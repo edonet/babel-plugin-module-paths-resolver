@@ -12,7 +12,7 @@
  * 加载依赖
  *****************************************
  */
-import { resolveAlias, includePaths } from '@ainc/fs';
+import * as fs from '@ainc/fs';
 import { types, NodePath, PluginPass } from '@babel/core';
 import { declare } from '@babel/helper-plugin-utils';
 import { load } from './jsonc';
@@ -51,6 +51,7 @@ const config = (
  *****************************************
  */
 interface State extends PluginPass {
+    dirname?: string;
     calls?: string[];
     resolvePath?(source: string): string;
 }
@@ -72,7 +73,13 @@ function transformSourceNode(expr: NodePath<types.StringLiteral>, state: State):
 
     // 替换路径
     if (sourcePath !== resolvedPath) {
-        expr.replaceWith(types.stringLiteral(resolvedPath));
+        expr.replaceWith(
+            types.stringLiteral(
+                fs.isAbsolutePath(resolvedPath) ?
+                './' + fs.relative(state.dirname || fs.cwd(), resolvedPath) :
+                resolvedPath
+            )
+        );
     }
 }
 
@@ -164,10 +171,10 @@ interface Options {
  *****************************************
  */
 export default declare((api, opts: Options = {}) => {
-    const include = includePaths(opts.exclude || ['node_modules']);
+    const include = fs.includePaths(opts.exclude || ['node_modules']);
     const calls = opts.calls ? [...transformCalls, ...opts.calls] : transformCalls;
     const options = config.compilerOptions || {};
-    const resolvePath = resolveAlias({ alias: opts.alias, baseUrl: options.baseUrl, paths: options.paths });
+    const resolvePath = fs.resolveAlias({ alias: opts.alias, baseUrl: options.baseUrl, paths: options.paths });
 
     // 校验版本
     api.assertVersion(7);
@@ -180,6 +187,7 @@ export default declare((api, opts: Options = {}) => {
 
             // 过滤文件
             if (!filename || !include(filename)) {
+                this.dirname = filename ? fs.dirname(filename) : process.cwd();
                 this.calls = calls;
                 this.resolvePath = resolvePath;
             }
